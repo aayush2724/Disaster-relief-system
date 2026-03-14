@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Environment
+backend/.env
+
+# Build
+frontend/build/
+
+# MySQL data
+mysql_data/
+
+# OS
+.DS_Store
+Thumbs.db
+config.bat

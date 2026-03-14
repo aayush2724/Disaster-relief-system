@@ -1,0 +1,68 @@
+# docker-compose.yml
+# Spins up 3 containers with a single `docker-compose up`:
+#   - mysql   : the database, auto-initialised with schema.sql + seed.sql
+#   - backend : Express API on port 5000
+#   - frontend: React app on port 3000 (dev server proxies API calls to backend)
+#
+# Usage:
+#   cp backend/.env.example backend/.env   (fill in JWT_SECRET)
+#   docker-compose up --build
+
+version: '3.8'
+
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: relief_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: relief_root_pass
+      MYSQL_DATABASE: disaster_relief
+      MYSQL_USER: relief_user
+      MYSQL_PASSWORD: relief_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # These two SQL files are run automatically on first container start
+      - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./backend/db/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: relief_api
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: relief_user
+      DB_PASSWORD: relief_pass
+      DB_NAME: disaster_relief
+      JWT_SECRET: change_this_secret_in_production
+      JWT_EXPIRES_IN: 7d
+      PORT: 5000
+    ports:
+      - "5000:5000"
+
+  frontend:
+    build: ./frontend
+    container_name: relief_ui
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000
+
+volumes:
+  mysql_data:
